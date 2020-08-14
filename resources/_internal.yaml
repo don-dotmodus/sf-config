@@ -1,0 +1,84 @@
+# This file is managed by ansible, do not edit directly
+---
+resources:
+  tenants:
+    local:
+      description: "The local tenant."
+      url: "https://sftests.com/manage"
+      default-connection: github.com
+      tenant-options:
+        zuul/report-build-page: True
+        zuul/max-job-timeout: 10800
+
+  connections:
+    gerrit:
+      base-url: "https://sftests.com/r"
+      type: gerrit
+    github.com:
+      base-url: "https://github.com"
+      type: github
+      github-app-name: don-dotmodus-sf
+      github-label: mergeit
+    opendev.org:
+      base-url: "https://opendev.org"
+      type: git
+
+  projects:
+    internal:
+      tenant: local
+      description: Internal configuration project
+      source-repositories:
+        - don-dotmodus/sf-config:
+            zuul/config-project: True
+        - don-dotmodus/sf-jobs:
+            repoxplorer/skip: True
+            hound/skip: True
+        - zuul/zuul-jobs:
+            connection: opendev.org
+            zuul/include: [job]
+            zuul/shadow: don-dotmodus/sf-jobs
+            repoxplorer/skip: True
+            hound/skip: True
+
+  repos:
+    don-dotmodus/sf-config:
+      description: Config repository
+      acl: config-acl
+    don-dotmodus/sf-jobs:
+      description: Local job repository
+      acl: config-acl
+
+  acls:
+    config-acl:
+      file: |
+        [access "refs/*"]
+          read = group config-core
+          owner = group config-ptl
+        [access "refs/heads/*"]
+          label-Code-Review = -2..+2 group config-core
+          label-Code-Review = -2..+2 group config-ptl
+          label-Verified = -2..+2 group config-ptl
+          label-Workflow = -1..+1 group config-core
+          label-Workflow = -1..+1 group config-ptl
+          label-Workflow = -1..+0 group Registered Users
+          rebase = group config-core
+          abandon = group config-core
+          submit = group config-ptl
+          read = group config-core
+          read = group Registered Users
+        [access "refs/meta/config"]
+          read = group config-core
+          read = group Registered Users
+        [receive]
+          requireChangeId = true
+        [submit]
+          mergeContent = false
+          action = fast forward only
+        [plugin "reviewers-by-blame"]
+          maxReviewers = 5
+          ignoreDrafts = true
+          ignoreSubjectRegEx = (WIP|DNM)(.*)
+      groups:
+        - config-ptl
+        - config-core
+
